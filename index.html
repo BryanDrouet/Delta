@@ -3,22 +3,47 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Delta – Hub de Jeux</title>
+  <title>Delta – Accueil</title>
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <header>
-    <h1>Δ Delta</h1>
-    <p>Bienvenue sur votre hub de jeux locaux</p>
-  </header>
+  <!-- Écran de création de profil -->
+  <div id="profile-setup">
+    <h1>Bienvenue sur Δ Delta</h1>
+    <p>Crée ton profil pour commencer</p>
+    <div class="form-group">
+      <label for="username">Nom du joueur</label>
+      <input type="text" id="username" placeholder="Ex. Bouk le Sage">
+    </div>
 
-  <main id="game-container">
-    <!-- Les jeux seront ajoutés dynamiquement -->
-  </main>
+    <div class="form-group">
+      <label for="emoji">Choisis ton emoji</label>
+      <select id="emoji">
+        <option value="🎮">🎮</option>
+        <option value="🧙‍♂️">🧙‍♂️</option>
+        <option value="🐉">🐉</option>
+        <option value="🧠">🧠</option>
+        <option value="🦸">🦸</option>
+        <option value="👾">👾</option>
+      </select>
+    </div>
 
-  <footer>
-    <p>&copy; 2025 Delta Games Hub</p>
-  </footer>
+    <button id="createProfile">Créer le profil</button>
+  </div>
+
+  <!-- Hub de jeux -->
+  <div id="game-hub" style="display: none;">
+    <header>
+      <h1>Δ Delta</h1>
+      <p id="welcome-text"></p>
+    </header>
+
+    <main id="game-container"></main>
+
+    <footer>
+      <p>&copy; 2025 Delta Games Hub</p>
+    </footer>
+  </div>
 
   <script src="script.js"></script>
 </body>
