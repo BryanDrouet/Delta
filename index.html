@@ -7,25 +7,18 @@
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <!-- Écran de création de profil -->
   <div id="profile-setup">
     <h1>Bienvenue sur Δ Delta</h1>
     <p>Crée ton profil pour commencer</p>
+
     <div class="form-group">
       <label for="username">Nom du joueur</label>
       <input type="text" id="username" placeholder="Ex. Bouk le Sage">
     </div>
 
     <div class="form-group">
-      <label for="emoji">Choisis ton emoji</label>
-      <select id="emoji">
-        <option value="🎮">🎮</option>
-        <option value="🧙‍♂️">🧙‍♂️</option>
-        <option value="🐉">🐉</option>
-        <option value="🧠">🧠</option>
-        <option value="🦸">🦸</option>
-        <option value="👾">👾</option>
-      </select>
+      <label for="emoji">Entre un emoji</label>
+      <input type="text" id="emoji" placeholder="Ex. 🧙‍♂️" maxlength="2">
     </div>
 
     <button id="createProfile">Créer le profil</button>
