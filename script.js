@@ -22,13 +22,19 @@ const profileSetup = document.getElementById("profile-setup");
 const gameHub = document.getElementById("game-hub");
 const welcomeText = document.getElementById("welcome-text");
 const gameContainer = document.getElementById("game-container");
+const emojiRegex = /\p{Emoji}/u;
 
 document.getElementById("createProfile").addEventListener("click", () => {
   const username = document.getElementById("username").value.trim();
-  const emoji = document.getElementById("emoji").value;
+  const emoji = document.getElementById("emoji").value.trim();
 
   if (username.length < 2) {
     alert("Le nom doit contenir au moins 2 caractères.");
+    return;
+  }
+
+  if (!emojiRegex.test(emoji)) {
+    alert("Veuillez entrer un emoji valide (ex: 🎮, 👾, 🧙‍♂️).");
     return;
   }
 
