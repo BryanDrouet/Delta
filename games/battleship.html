@@ -2,244 +2,303 @@
 <html lang="fr">
 <head>
 <meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Bataille Navale - Placement & Prêt</title>
+<title>Bataille Navale dans un Canvas unique</title>
 <style>
-  /* Reset & base */
   body {
-    font-family: Arial, sans-serif;
-    text-align: center;
-    background: #eef2f7;
-    margin: 0; padding: 0;
-    min-height: 100vh;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
+    margin:0; 
+    background:#222; 
+    color:#eee; 
+    display:flex; 
+    justify-content:center; 
+    align-items:center; 
+    height:100vh;
+    user-select:none;
+    font-family:sans-serif;
   }
-  h1 {
-    margin: 20px 0 10px;
-  }
-  .container {
-    display: flex;
-    justify-content: center;
-    gap: 40px;
-    margin: 20px;
-    flex-wrap: wrap;
-    max-width: 700px;
-    width: 100%;
-  }
-  .player {
-    background: white;
-    border: 2px solid #444;
-    padding: 10px;
-    border-radius: 8px;
-    width: 300px;
-    box-shadow: 0 0 8px rgba(0,0,0,0.1);
-  }
-  .player h2 {
-    margin-top: 0;
-  }
-  .grid {
-    display: grid;
-    grid-template-columns: repeat(10, 25px);
-    grid-template-rows: repeat(10, 25px);
-    gap: 2px;
-    margin-bottom: 10px;
-    user-select: none;
-  }
-  .cell {
-    width: 25px; height: 25px;
-    background: #cce5ff;
-    border: 1px solid #999;
-    cursor: pointer;
-    transition: background-color 0.3s ease;
-  }
-  .cell.ship {
-    background: #004085;
-  }
-  .cell.hit {
-    background: #dc3545;
-  }
-  .cell.miss {
-    background: #6c757d;
-  }
-  button {
-    padding: 8px 15px;
-    font-size: 16px;
-    cursor: pointer;
-    border: none;
-    border-radius: 5px;
-    background-color: #007bff;
-    color: white;
-    transition: background-color 0.3s ease;
-  }
-  button:hover:not(:disabled) {
-    background-color: #0056b3;
-  }
-  button:disabled {
-    background-color: #aaa;
-    cursor: default;
-  }
-  #popup {
-    position: fixed;
-    top: 40%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    background: #007bff;
-    color: white;
-    font-size: 24px;
-    padding: 20px 40px;
-    border-radius: 10px;
-    box-shadow: 0 0 15px #007bffcc;
-    z-index: 1000;
-    display: none;
-    opacity: 0;
-    pointer-events: none;
-    transition: opacity 0.5s ease;
-  }
-  #popup.show {
-    display: block;
-    opacity: 1;
-    pointer-events: auto;
-  }
-
-  /* Responsive - sur petits écrans, grilles empilées */
-  @media (max-width: 650px) {
-    .container {
-      flex-direction: column;
-      align-items: center;
-      gap: 30px;
-    }
+  canvas {
+    background:#111;
+    border:2px solid #555;
+    cursor:pointer;
   }
 </style>
 </head>
 <body>
 
-<h1>Bataille Navale — Placement & Prêt</h1>
+<canvas id="gameCanvas" width="1000" height="600" tabindex="0" aria-label="Jeu de bataille navale"></canvas>
 
-<div class="container">
-
-  <div class="player" id="player1">
-    <h2>Joueur 1</h2>
-    <div class="grid" id="grid1" aria-label="Grille du joueur 1"></div>
-    <button id="ready1" disabled aria-disabled="true" aria-label="Bouton prêt joueur 1">Prêt</button>
-    <p id="status1" aria-live="polite">Placez vos 5 bateaux</p>
-  </div>
-
-  <div class="player" id="player2">
-    <h2>Joueur 2</h2>
-    <div class="grid" id="grid2" aria-label="Grille du joueur 2"></div>
-    <button id="ready2" disabled aria-disabled="true" aria-label="Bouton prêt joueur 2">Prêt</button>
-    <p id="status2" aria-live="polite">Placez vos 5 bateaux</p>
-  </div>
-
-</div>
-
-<div id="popup" role="alert" aria-live="assertive"></div>
-
+<script src="https://cdn.ably.io/lib/ably.min-1.js"></script>
 <script>
 (() => {
+  const ablyKey = "RQR2Pw.vnmFWw:xRG6DAJnEObLSQVysKoaeCcR9eCVnlRyXYzPks-kEWY";
+  const channelName = "battleship-game-channel";
+
+  // Canvas setup
+  const canvas = document.getElementById('gameCanvas');
+  const ctx = canvas.getContext('2d');
+
+  // Game constants
   const gridSize = 10;
-  const shipsToPlace = 5;
+  const cellSize = 30;
+  const gridPadding = 20;
 
-  class Player {
-    constructor(id) {
-      this.id = id;
-      this.gridEl = document.getElementById(`grid${id}`);
-      this.readyBtn = document.getElementById(`ready${id}`);
-      this.statusEl = document.getElementById(`status${id}`);
-      this.placedShips = new Set();
-      this.isReady = false;
-      this.canPlace = true;
-      this.initGrid();
-      this.readyBtn.addEventListener('click', () => this.toggleReady());
-    }
-    initGrid() {
-      for (let i = 0; i < gridSize * gridSize; i++) {
-        const cell = document.createElement('div');
-        cell.classList.add('cell');
-        cell.dataset.index = i;
-        cell.tabIndex = 0;
-        cell.addEventListener('click', () => this.placeShip(i));
-        cell.addEventListener('keydown', e => {
-          if (e.key === "Enter" || e.key === " ") {
-            e.preventDefault();
-            this.placeShip(i);
-          }
-        });
-        this.gridEl.appendChild(cell);
+  // Position des deux grilles dans le canvas
+  const playerGridPos = { x: gridPadding, y: 100 };
+  const enemyGridPos = { x: 1000 - gridPadding - gridSize * cellSize, y: 100 };
+
+  // Taille bouton "Prêt"
+  const button = { x: 440, y: 20, width: 120, height: 40 };
+
+  // États joueurs
+  let localPlayerId = null;
+  let localPlayerName = "";
+  let localPlayerEmoji = "";
+  let localShips = []; // tableau de cases occupées [{x,y}]
+  let localReady = false;
+
+  let remotePlayerId = null;
+  let remoteShips = [];
+  let remoteReady = false;
+
+  let connectedPlayers = 0;
+
+  // Ably connection
+  const ably = new Ably.Realtime(ablyKey);
+  const channel = ably.channels.get(channelName);
+
+  // Génération clientId temporaire (on va remplacer par player1 ou player2)
+  let clientId = "temp-" + Math.floor(Math.random() * 10000);
+  ably.auth.clientId = clientId;
+
+  // Presence tracking
+  let presenceClients = new Set();
+
+  // Popup message (dessiné dans canvas)
+  let popupMessage = null;
+  let popupTimeout = null;
+
+  // --- Fonctions dessin ---
+
+  function drawGrid(x, y, ships, showShips) {
+    ctx.strokeStyle = '#888';
+    ctx.lineWidth = 1;
+
+    // Fond grille
+    ctx.fillStyle = '#003366';
+    ctx.fillRect(x, y, gridSize * cellSize, gridSize * cellSize);
+
+    // Cases
+    for(let i=0; i<gridSize; i++) {
+      for(let j=0; j<gridSize; j++) {
+        ctx.strokeRect(x + i*cellSize, y + j*cellSize, cellSize, cellSize);
       }
     }
-    placeShip(i) {
-      if (!this.canPlace) return;
-      if (this.placedShips.has(i)) {
-        this.placedShips.delete(i);
-        this.gridEl.children[i].classList.remove('ship');
-        this.statusEl.textContent = `Bateaux placés: ${this.placedShips.size}/${shipsToPlace}`;
-        this.readyBtn.disabled = true;
-        this.readyBtn.setAttribute("aria-disabled", "true");
-      } else {
-        if (this.placedShips.size < shipsToPlace) {
-          this.placedShips.add(i);
-          this.gridEl.children[i].classList.add('ship');
-          this.statusEl.textContent = `Bateaux placés: ${this.placedShips.size}/${shipsToPlace}`;
-          if (this.placedShips.size === shipsToPlace) {
-            this.readyBtn.disabled = false;
-            this.readyBtn.setAttribute("aria-disabled", "false");
-            this.statusEl.textContent = "Cliquez sur Prêt quand vous êtes prêt";
-          }
-        }
-      }
-    }
-    toggleReady() {
-      if (!this.isReady && this.placedShips.size !== shipsToPlace) return;
-      this.isReady = !this.isReady;
-      if (this.isReady) {
-        this.canPlace = false;
-        this.readyBtn.textContent = "Annuler Prêt";
-        this.statusEl.textContent = "Prêt ! En attente de l'autre joueur...";
-      } else {
-        this.canPlace = true;
-        this.readyBtn.textContent = "Prêt";
-        this.statusEl.textContent = `Placez vos ${shipsToPlace} bateaux`;
-        this.readyBtn.disabled = this.placedShips.size !== shipsToPlace;
-        this.readyBtn.setAttribute("aria-disabled", this.readyBtn.disabled ? "true" : "false");
-      }
-      checkBothReady();
+
+    // Bateaux
+    if(showShips) {
+      ctx.fillStyle = '#0a0';
+      ships.forEach(cell => {
+        ctx.fillRect(x + cell.x*cellSize + 2, y + cell.y*cellSize + 2, cellSize - 4, cellSize - 4);
+      });
     }
   }
 
-  const popup = document.getElementById('popup');
+  function drawButton() {
+    ctx.fillStyle = localReady ? '#080' : '#444';
+    ctx.strokeStyle = '#0f0';
+    ctx.lineWidth = 2;
+    ctx.fillRect(button.x, button.y, button.width, button.height);
+    ctx.strokeRect(button.x, button.y, button.width, button.height);
 
-  function showPopup(message, duration=4000) {
-    popup.textContent = message;
-    popup.classList.add('show');
-    setTimeout(() => {
-      popup.classList.remove('show');
+    ctx.fillStyle = '#0f0';
+    ctx.font = '20px Arial';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(localReady ? "Prêt ✔" : "Prêt ?", button.x + button.width/2, button.y + button.height/2);
+  }
+
+  function drawText() {
+    ctx.fillStyle = '#eee';
+    ctx.font = '24px Arial';
+    ctx.textAlign = 'left';
+
+    // Titres grilles
+    ctx.fillText(`${localPlayerEmoji} ${localPlayerName}`, playerGridPos.x, playerGridPos.y - 40);
+    ctx.fillText(`${remotePlayerId ? 'Adversaire' : 'En attente...'}`, enemyGridPos.x, enemyGridPos.y - 40);
+
+    // Joueurs connectés
+    ctx.fillText(`Joueurs connectés : ${connectedPlayers} / 2`, 20, 40);
+
+    // Status prêt adversaire
+    ctx.fillText(`Adversaire prêt : ${remoteReady ? 'Oui ✔' : 'Non'}`, enemyGridPos.x, enemyGridPos.y + gridSize * cellSize + 30);
+  }
+
+  function drawPopup() {
+    if (!popupMessage) return;
+    ctx.fillStyle = 'rgba(0,0,0,0.8)';
+    ctx.fillRect(200, 250, 600, 100);
+    ctx.strokeStyle = '#0f0';
+    ctx.lineWidth = 3;
+    ctx.strokeRect(200, 250, 600, 100);
+    ctx.fillStyle = '#0f0';
+    ctx.font = '28px Arial';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(popupMessage, 500, 300);
+  }
+
+  // --- Interaction & utilitaires ---
+
+  function isPointInRect(px, py, rect) {
+    return px >= rect.x && px <= rect.x + rect.width && py >= rect.y && py <= rect.y + rect.height;
+  }
+
+  function showPopup(msg, duration=3000) {
+    popupMessage = msg;
+    if(popupTimeout) clearTimeout(popupTimeout);
+    popupTimeout = setTimeout(() => {
+      popupMessage = null;
+      draw();
     }, duration);
+    draw();
   }
 
-  const player1 = new Player(1);
-  const player2 = new Player(2);
+  // Place un bateau sur la grille locale si pas déjà placé et dans la grille
+  function tryPlaceShipCell(x, y) {
+    if(localReady) return; // Plus possible après prêt
+    if(x < 0 || x >= gridSize || y < 0 || y >= gridSize) return;
 
-  function checkBothReady() {
-    if (player1.isReady && player2.isReady) {
-      launchGame();
+    // Si case déjà occupée, retirer (toggle)
+    const idx = localShips.findIndex(c => c.x === x && c.y === y);
+    if(idx >= 0) {
+      localShips.splice(idx, 1);
+      publishState();
+      draw();
+      return;
     }
+
+    // Sinon ajouter (limite à 5 bateaux)
+    if(localShips.length >= 5) {
+      showPopup("Maximum 5 cases bateau");
+      return;
+    }
+    localShips.push({x,y});
+    publishState();
+    draw();
   }
 
-  function launchGame() {
-    player1.canPlace = false;
-    player2.canPlace = false;
-    player1.readyBtn.disabled = true;
-    player2.readyBtn.disabled = true;
-    player1.readyBtn.setAttribute("aria-disabled", "true");
-    player2.readyBtn.setAttribute("aria-disabled", "true");
-    player1.statusEl.textContent = "La partie commence !";
-    player2.statusEl.textContent = "La partie commence !";
-    showPopup("Les deux joueurs sont prêts ! Le jeu commence. À vous de jouer.");
-    // Ici on pourrait continuer avec la phase de tir...
+  // Gérer clic souris
+  canvas.addEventListener('click', e => {
+    const rect = canvas.getBoundingClientRect();
+    const cx = e.clientX - rect.left;
+    const cy = e.clientY - rect.top;
+
+    // Si clic sur bouton prêt
+    if(isPointInRect(cx, cy, button)) {
+      if(localShips.length < 5) {
+        showPopup("Placez 5 cases bateau avant de valider");
+        return;
+      }
+      localReady = !localReady; // toggle prêt
+      publishState();
+      draw();
+
+      if(localReady && remoteReady) {
+        showPopup("Les deux joueurs sont prêts ! La partie peut commencer !");
+      }
+      return;
+    }
+
+    // Si clic dans grille joueur local
+    if(cx >= playerGridPos.x && cx <= playerGridPos.x + gridSize * cellSize &&
+       cy >= playerGridPos.y && cy <= playerGridPos.y + gridSize * cellSize) {
+      const gx = Math.floor((cx - playerGridPos.x) / cellSize);
+      const gy = Math.floor((cy - playerGridPos.y) / cellSize);
+      tryPlaceShipCell(gx, gy);
+      return;
+    }
+  });
+
+  // --- Ably & présence ---
+
+  // Recevoir état des joueurs
+  channel.subscribe('state-update', msg => {
+    const data = msg.data;
+    if(!data.playerId || data.playerId === localPlayerId) return;
+
+    if(data.playerId !== localPlayerId) {
+      remotePlayerId = data.playerId;
+      remoteShips = data.ships || [];
+      remoteReady = data.ready || false;
+      draw();
+    }
+  });
+
+  // Publier état local
+  function publishState() {
+    if(!localPlayerId) return;
+    channel.publish('state-update', {
+      playerId: localPlayerId,
+      ships: localShips,
+      ready: localReady,
+      username: localPlayerName,
+      emoji: localPlayerEmoji
+    });
   }
+
+  // Gestion présence
+  channel.presence.subscribe('enter', member => {
+    presenceClients.add(member.clientId);
+    connectedPlayers = presenceClients.size;
+    draw();
+  });
+  channel.presence.subscribe('leave', member => {
+    presenceClients.delete(member.clientId);
+    connectedPlayers = presenceClients.size;
+    draw();
+  });
+
+  // Entrée présence
+  channel.presence.enter();
+
+  // --- Assignation joueur (player1 ou player2) ---
+
+  async function assignPlayerSlot() {
+    const members = await channel.presence.get();
+    const clients = members.map(m => m.clientId);
+
+    if(!clients.includes('player1')) {
+      localPlayerId = 'player1';
+      localPlayerName = prompt("Votre pseudo pour Joueur 1:", "Joueur 1") || "Joueur 1";
+      localPlayerEmoji = prompt("Choisissez un emoji pour Joueur 1:", "🎮") || "🎮";
+    } else if(!clients.includes('player2')) {
+      localPlayerId = 'player2';
+      localPlayerName = prompt("Votre pseudo pour Joueur 2:", "Joueur 2") || "Joueur 2";
+      localPlayerEmoji = prompt("Choisissez un emoji pour Joueur 2:", "🛳️") || "🛳️";
+    } else {
+      alert("Le jeu est plein. Réessayez plus tard.");
+      localPlayerId = null;
+    }
+    draw();
+  }
+
+  assignPlayerSlot();
+
+  // --- Boucle de dessin ---
+  function draw() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    drawText();
+    drawGrid(playerGridPos.x, playerGridPos.y, localShips, true);
+    drawGrid(enemyGridPos.x, enemyGridPos.y, remoteShips, false);
+    drawButton();
+    drawPopup();
+  }
+
+  // Initial draw
+  draw();
+
+  // Focus canvas pour accessibilité clavier
+  canvas.focus();
 
 })();
 </script>
