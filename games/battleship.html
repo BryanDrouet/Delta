@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Bataille Navale 2 Joueurs</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      background: #f0f8ff;
+      margin: 0;
+      padding: 20px;
+    }
+    h1 {
+      text-align: center;
+    }
+    .game-container {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 20px;
+    }
+    .board {
+      display: grid;
+      grid-template-columns: repeat(10, 30px);
+      grid-template-rows: repeat(10, 30px);
+      gap: 2px;
+    }
+    .cell {
+      width: 30px;
+      height: 30px;
+      background-color: #add8e6;
+      border: 1px solid #333;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+    }
+    .ship { background-color: #444; }
+    .hit { background-color: red; }
+    .miss { background-color: white; }
+    .hidden { background-color: #add8e6; }
+    .controls {
+      margin-top: 20px;
+    }
+    .player-title {
+      text-align: center;
+      font-weight: bold;
+      margin-bottom: 5px;
+    }
+    button {
+      padding: 10px;
+      font-size: 16px;
+    }
+  </style>
+</head>
+<body>
+  <h1>Bataille Navale - 2 Joueurs</h1>
+  <div class="game-container">
+    <div>
+      <div class="player-title">Joueur 1 (Tirer)</div>
+      <div class="board" id="player2Board"></div>
+    </div>
+    <div>
+      <div class="player-title">Joueur 2 (Tirer)</div>
+      <div class="board" id="player1Board"></div>
+    </div>
+  </div>
+  <div class="controls">
+    <button onclick="resetGame()">Réinitialiser</button>
+    <p id="status"></p>
+  </div>
+
+  <script>
+    const SIZE = 10;
+    const ships = [5, 4, 3, 3, 2];
+
+    const player1Board = [];
+    const player2Board = [];
+    let currentPlayer = 1;
+    let gameEnded = false;
+
+    function initBoard(board) {
+      for (let i = 0; i < SIZE; i++) {
+        board[i] = [];
+        for (let j = 0; j < SIZE; j++) {
+          board[i][j] = { ship: false, hit: false };
+        }
+      }
+    }
+
+    function placeShipsRandomly(board) {
+      for (let length of ships) {
+        let placed = false;
+        while (!placed) {
+          let orientation = Math.random() < 0.5 ? 'H' : 'V';
+          let x = Math.floor(Math.random() * SIZE);
+          let y = Math.floor(Math.random() * SIZE);
+          if (canPlaceShip(board, x, y, length, orientation)) {
+            for (let i = 0; i < length; i++) {
+              if (orientation === 'H') board[y][x + i].ship = true;
+              else board[y + i][x].ship = true;
+            }
+            placed = true;
+          }
+        }
+      }
+    }
+
+    function canPlaceShip(board, x, y, length, orientation) {
+      if (orientation === 'H' && x + length > SIZE) return false;
+      if (orientation === 'V' && y + length > SIZE) return false;
+      for (let i = 0; i < length; i++) {
+        let xi = orientation === 'H' ? x + i : x;
+        let yi = orientation === 'V' ? y + i : y;
+        if (board[yi][xi].ship) return false;
+      }
+      return true;
+    }
+
+    function drawBoards() {
+      const board1 = document.getElementById("player1Board");
+      const board2 = document.getElementById("player2Board");
+      board1.innerHTML = '';
+      board2.innerHTML = '';
+      drawBoard(board1, player1Board, 2);
+      drawBoard(board2, player2Board, 1);
+    }
+
+    function drawBoard(container, board, opponent) {
+      for (let y = 0; y < SIZE; y++) {
+        for (let x = 0; x < SIZE; x++) {
+          const cell = document.createElement('div');
+          cell.className = 'cell';
+          const cellData = board[y][x];
+
+          if (cellData.hit) {
+            cell.classList.add(cellData.ship ? 'hit' : 'miss');
+          } else if (opponent === currentPlayer) {
+            cell.classList.add('hidden');
+            cell.onclick = () => handleShot(board, x, y);
+          } else if (cellData.ship) {
+            cell.classList.add('ship');
+          }
+          container.appendChild(cell);
+        }
+      }
+    }
+
+    function handleShot(board, x, y) {
+      if (gameEnded) return;
+      const cell = board[y][x];
+      if (cell.hit) return;
+
+      cell.hit = true;
+      drawBoards();
+      if (checkWin(board)) {
+        document.getElementById("status").innerText = `Le Joueur ${currentPlayer} a gagné !`;
+        gameEnded = true;
+        return;
+      }
+      currentPlayer = currentPlayer === 1 ? 2 : 1;
+      document.getElementById("status").innerText = `Tour du Joueur ${currentPlayer}`;
+    }
+
+    function checkWin(board) {
+      for (let row of board) {
+        for (let cell of row) {
+          if (cell.ship && !cell.hit) return false;
+        }
+      }
+      return true;
+    }
+
+    function resetGame() {
+      gameEnded = false;
+      currentPlayer = 1;
+      initBoard(player1Board);
+      initBoard(player2Board);
+      placeShipsRandomly(player1Board);
+      placeShipsRandomly(player2Board);
+      drawBoards();
+      document.getElementById("status").innerText = `Tour du Joueur 1`;
+    }
+
+    resetGame();
+  </script>
+</body>
+</html>
