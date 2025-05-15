@@ -1,19 +1,9 @@
 // Liste des jeux
 const games = [
   {
-    name: "Jeu de Cartes",
-    image: "assets/cartes.jpg",
-    link: "jeux/cartes/index.html"
-  },
-  {
-    name: "Labyrinthe",
-    image: "assets/labyrinthe.jpg",
-    link: "jeux/labyrinthe/index.html"
-  },
-  {
-    name: "Quiz Boukistan",
-    image: "assets/quiz.jpg",
-    link: "jeux/quiz/index.html"
+    name: "Bataille Navale",
+    image: "assets/battleship.jpg",
+    link: "games/battleship.html"
   }
 ];
 
