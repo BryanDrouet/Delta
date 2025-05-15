@@ -1,175 +1,248 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Bataille Navale En Ligne</title>
-  <script src="https://cdn.ably.io/lib/ably.min-1.js"></script>
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      text-align: center;
-      background: #f0f8ff;
-      margin: 0;
-      padding: 20px;
-    }
-    .hidden { display: none; }
-    .board {
-      display: grid;
-      grid-template-columns: repeat(10, 30px);
-      grid-template-rows: repeat(10, 30px);
-      gap: 2px;
-      margin: 10px auto;
-    }
-    .cell {
-      width: 30px;
-      height: 30px;
-      background-color: #add8e6;
-      border: 1px solid #333;
-      display: flex;
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Bataille Navale - Placement & Prêt</title>
+<style>
+  /* Reset & base */
+  body {
+    font-family: Arial, sans-serif;
+    text-align: center;
+    background: #eef2f7;
+    margin: 0; padding: 0;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+  h1 {
+    margin: 20px 0 10px;
+  }
+  .container {
+    display: flex;
+    justify-content: center;
+    gap: 40px;
+    margin: 20px;
+    flex-wrap: wrap;
+    max-width: 700px;
+    width: 100%;
+  }
+  .player {
+    background: white;
+    border: 2px solid #444;
+    padding: 10px;
+    border-radius: 8px;
+    width: 300px;
+    box-shadow: 0 0 8px rgba(0,0,0,0.1);
+  }
+  .player h2 {
+    margin-top: 0;
+  }
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(10, 25px);
+    grid-template-rows: repeat(10, 25px);
+    gap: 2px;
+    margin-bottom: 10px;
+    user-select: none;
+  }
+  .cell {
+    width: 25px; height: 25px;
+    background: #cce5ff;
+    border: 1px solid #999;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+  }
+  .cell.ship {
+    background: #004085;
+  }
+  .cell.hit {
+    background: #dc3545;
+  }
+  .cell.miss {
+    background: #6c757d;
+  }
+  button {
+    padding: 8px 15px;
+    font-size: 16px;
+    cursor: pointer;
+    border: none;
+    border-radius: 5px;
+    background-color: #007bff;
+    color: white;
+    transition: background-color 0.3s ease;
+  }
+  button:hover:not(:disabled) {
+    background-color: #0056b3;
+  }
+  button:disabled {
+    background-color: #aaa;
+    cursor: default;
+  }
+  #popup {
+    position: fixed;
+    top: 40%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: #007bff;
+    color: white;
+    font-size: 24px;
+    padding: 20px 40px;
+    border-radius: 10px;
+    box-shadow: 0 0 15px #007bffcc;
+    z-index: 1000;
+    display: none;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.5s ease;
+  }
+  #popup.show {
+    display: block;
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  /* Responsive - sur petits écrans, grilles empilées */
+  @media (max-width: 650px) {
+    .container {
+      flex-direction: column;
       align-items: center;
-      justify-content: center;
-      cursor: pointer;
+      gap: 30px;
     }
-    .ship { background-color: #444; }
-    .hit { background-color: red; }
-    .miss { background-color: white; }
-    #status { margin: 10px; font-weight: bold; }
-    input, button { padding: 10px; font-size: 16px; margin: 5px; }
-  </style>
+  }
+</style>
 </head>
 <body>
-  <h1>Bataille Navale - En Ligne</h1>
-  <div id="setup">
-    <p>Code de partie : <input id="roomCode" value="ABCD" maxlength="10"> </p>
-    <button onclick="createGame()">Créer</button>
-    <button onclick="joinGame()">Rejoindre</button>
+
+<h1>Bataille Navale — Placement & Prêt</h1>
+
+<div class="container">
+
+  <div class="player" id="player1">
+    <h2>Joueur 1</h2>
+    <div class="grid" id="grid1" aria-label="Grille du joueur 1"></div>
+    <button id="ready1" disabled aria-disabled="true" aria-label="Bouton prêt joueur 1">Prêt</button>
+    <p id="status1" aria-live="polite">Placez vos 5 bateaux</p>
   </div>
 
-  <div id="game" class="hidden">
-    <p id="status"></p>
-    <div id="enemyBoard" class="board"></div>
-    <div id="yourBoard" class="board"></div>
+  <div class="player" id="player2">
+    <h2>Joueur 2</h2>
+    <div class="grid" id="grid2" aria-label="Grille du joueur 2"></div>
+    <button id="ready2" disabled aria-disabled="true" aria-label="Bouton prêt joueur 2">Prêt</button>
+    <p id="status2" aria-live="polite">Placez vos 5 bateaux</p>
   </div>
 
-  <script>
-    const SIZE = 10;
-    const ships = [5, 4, 3, 3, 2];
-    let yourBoard = [];
-    let enemyBoard = [];
-    let channel, isMyTurn = false, gameStarted = false;
-    let role = '', ably;
+</div>
 
-    function initBoards() {
-      yourBoard = Array.from({ length: SIZE }, () => Array(SIZE).fill({ ship: false, hit: false }));
-      enemyBoard = Array.from({ length: SIZE }, () => Array(SIZE).fill({ hit: false }));
+<div id="popup" role="alert" aria-live="assertive"></div>
+
+<script>
+(() => {
+  const gridSize = 10;
+  const shipsToPlace = 5;
+
+  class Player {
+    constructor(id) {
+      this.id = id;
+      this.gridEl = document.getElementById(`grid${id}`);
+      this.readyBtn = document.getElementById(`ready${id}`);
+      this.statusEl = document.getElementById(`status${id}`);
+      this.placedShips = new Set();
+      this.isReady = false;
+      this.canPlace = true;
+      this.initGrid();
+      this.readyBtn.addEventListener('click', () => this.toggleReady());
     }
-
-    function placeShips(board) {
-      for (let len of ships) {
-        let placed = false;
-        while (!placed) {
-          let x = Math.floor(Math.random() * SIZE);
-          let y = Math.floor(Math.random() * SIZE);
-          let horiz = Math.random() < 0.5;
-          if (canPlace(board, x, y, len, horiz)) {
-            for (let i = 0; i < len; i++) {
-              if (horiz) board[y][x + i] = { ship: true, hit: false };
-              else board[y + i][x] = { ship: true, hit: false };
-            }
-            placed = true;
+    initGrid() {
+      for (let i = 0; i < gridSize * gridSize; i++) {
+        const cell = document.createElement('div');
+        cell.classList.add('cell');
+        cell.dataset.index = i;
+        cell.tabIndex = 0;
+        cell.addEventListener('click', () => this.placeShip(i));
+        cell.addEventListener('keydown', e => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            this.placeShip(i);
+          }
+        });
+        this.gridEl.appendChild(cell);
+      }
+    }
+    placeShip(i) {
+      if (!this.canPlace) return;
+      if (this.placedShips.has(i)) {
+        this.placedShips.delete(i);
+        this.gridEl.children[i].classList.remove('ship');
+        this.statusEl.textContent = `Bateaux placés: ${this.placedShips.size}/${shipsToPlace}`;
+        this.readyBtn.disabled = true;
+        this.readyBtn.setAttribute("aria-disabled", "true");
+      } else {
+        if (this.placedShips.size < shipsToPlace) {
+          this.placedShips.add(i);
+          this.gridEl.children[i].classList.add('ship');
+          this.statusEl.textContent = `Bateaux placés: ${this.placedShips.size}/${shipsToPlace}`;
+          if (this.placedShips.size === shipsToPlace) {
+            this.readyBtn.disabled = false;
+            this.readyBtn.setAttribute("aria-disabled", "false");
+            this.statusEl.textContent = "Cliquez sur Prêt quand vous êtes prêt";
           }
         }
       }
     }
-
-    function canPlace(board, x, y, len, horiz) {
-      if (horiz && x + len > SIZE) return false;
-      if (!horiz && y + len > SIZE) return false;
-      for (let i = 0; i < len; i++) {
-        const cx = horiz ? x + i : x;
-        const cy = horiz ? y : y + i;
-        if (board[cy][cx]?.ship) return false;
+    toggleReady() {
+      if (!this.isReady && this.placedShips.size !== shipsToPlace) return;
+      this.isReady = !this.isReady;
+      if (this.isReady) {
+        this.canPlace = false;
+        this.readyBtn.textContent = "Annuler Prêt";
+        this.statusEl.textContent = "Prêt ! En attente de l'autre joueur...";
+      } else {
+        this.canPlace = true;
+        this.readyBtn.textContent = "Prêt";
+        this.statusEl.textContent = `Placez vos ${shipsToPlace} bateaux`;
+        this.readyBtn.disabled = this.placedShips.size !== shipsToPlace;
+        this.readyBtn.setAttribute("aria-disabled", this.readyBtn.disabled ? "true" : "false");
       }
-      return true;
+      checkBothReady();
     }
+  }
 
-    function drawBoards() {
-      const enemyDiv = document.getElementById("enemyBoard");
-      const yourDiv = document.getElementById("yourBoard");
-      enemyDiv.innerHTML = '';
-      yourDiv.innerHTML = '';
-      enemyBoard.forEach((row, y) => row.forEach((cell, x) => {
-        const div = document.createElement('div');
-        div.className = 'cell';
-        if (cell.hit) div.classList.add(cell.ship ? 'hit' : 'miss');
-        else if (isMyTurn) div.onclick = () => fire(x, y);
-        enemyDiv.appendChild(div);
-      }));
-      yourBoard.forEach((row, y) => row.forEach((cell, x) => {
-        const div = document.createElement('div');
-        div.className = 'cell';
-        if (cell.ship) div.classList.add('ship');
-        if (cell.hit) div.classList.add(cell.ship ? 'hit' : 'miss');
-        yourDiv.appendChild(div);
-      }));
-    }
+  const popup = document.getElementById('popup');
 
-    function fire(x, y) {
-      if (!isMyTurn || enemyBoard[y][x].hit) return;
-      isMyTurn = false;
-      enemyBoard[y][x].hit = true;
-      drawBoards();
-      channel.publish("fire", { x, y });
-      document.getElementById("status").innerText = "En attente de l'adversaire...";
-    }
+  function showPopup(message, duration=4000) {
+    popup.textContent = message;
+    popup.classList.add('show');
+    setTimeout(() => {
+      popup.classList.remove('show');
+    }, duration);
+  }
 
-    function receiveFire(x, y) {
-      const cell = yourBoard[y][x];
-      cell.hit = true;
-      const hit = cell.ship;
-      drawBoards();
-      isMyTurn = true;
-      document.getElementById("status").innerText = hit ? "Touché !" : "À vous de jouer !";
-      channel.publish("result", { x, y, hit });
-    }
+  const player1 = new Player(1);
+  const player2 = new Player(2);
 
-    function receiveResult(data) {
-      enemyBoard[data.y][data.x].ship = data.hit;
-      drawBoards();
+  function checkBothReady() {
+    if (player1.isReady && player2.isReady) {
+      launchGame();
     }
+  }
 
-    function setupGame() {
-      initBoards();
-      placeShips(yourBoard);
-      drawBoards();
-      document.getElementById("setup").classList.add("hidden");
-      document.getElementById("game").classList.remove("hidden");
-    }
+  function launchGame() {
+    player1.canPlace = false;
+    player2.canPlace = false;
+    player1.readyBtn.disabled = true;
+    player2.readyBtn.disabled = true;
+    player1.readyBtn.setAttribute("aria-disabled", "true");
+    player2.readyBtn.setAttribute("aria-disabled", "true");
+    player1.statusEl.textContent = "La partie commence !";
+    player2.statusEl.textContent = "La partie commence !";
+    showPopup("Les deux joueurs sont prêts ! Le jeu commence. À vous de jouer.");
+    // Ici on pourrait continuer avec la phase de tir...
+  }
 
-    function createGame() {
-      const code = document.getElementById("roomCode").value;
-      setupGame();
-      role = 'host';
-      isMyTurn = true;
-      ably = new Ably.Realtime('RQR2Pw.vnmFWw:xRG6DAJnEObLSQVysKoaeCcR9eCVnlRyXYzPks-kEWY');
-      channel = ably.channels.get(code);
-      channel.subscribe("fire", msg => receiveFire(msg.data.x, msg.data.y));
-      channel.subscribe("result", msg => receiveResult(msg.data));
-      document.getElementById("status").innerText = "À vous de jouer !";
-    }
+})();
+</script>
 
-    function joinGame() {
-      const code = document.getElementById("roomCode").value;
-      setupGame();
-      role = 'guest';
-      isMyTurn = false;
-      ably = new Ably.Realtime('RQR2Pw.vnmFWw:xRG6DAJnEObLSQVysKoaeCcR9eCVnlRyXYzPks-kEWY');
-      channel = ably.channels.get(code);
-      channel.subscribe("fire", msg => receiveFire(msg.data.x, msg.data.y));
-      channel.subscribe("result", msg => receiveResult(msg.data));
-      document.getElementById("status").innerText = "En attente de l'adversaire...";
-    }
-  </script>
 </body>
 </html>
