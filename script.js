@@ -5,6 +5,11 @@ const games = [
     image: "assets/battleship.jpg",
     link: "games/battleship.html"
   }
+  {
+    name: "Pendu",
+    image: "assets/pendu.jpg",
+    link: "games/pendu.html"
+  }
 ];
 
 // Gestion du profil
