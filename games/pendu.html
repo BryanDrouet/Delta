@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Jeu du Pendu Multi-Joueurs</title>
+<title>Jeu du Pendu Multi-Joueurs avec Image & Clavier Configurable</title>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700&display=swap');
 
@@ -22,7 +22,7 @@
     background: #fff;
     max-width: 900px;
     width: 90vw;
-    margin: 40px 20px;
+    margin: 40px 20px 80px;
     border-radius: 15px;
     box-shadow: 0 15px 50px rgb(0 0 0 / 0.3);
     padding: 30px 40px;
@@ -51,7 +51,7 @@
     border-radius: 6px;
     border: 2px solid #667eea;
     outline-offset: 2px;
-    width: 120px;
+    width: 160px;
     color: #45337f;
   }
   button {
@@ -68,7 +68,7 @@
     box-shadow: 0 5px 15px rgb(102 126 234 / 0.7);
   }
   button:hover:not(:disabled) {
-    background: #5c6bc0;
+    background: #5064cc;
   }
   button:disabled {
     background: #ddd;
@@ -79,27 +79,27 @@
 
   /* Setup screen */
   #setup-screen {
-    max-width: 500px;
+    max-width: 520px;
     margin: 0 auto 30px;
     border-radius: 15px;
     box-shadow: 0 6px 20px rgb(0 0 0 / 0.1);
     padding: 30px 25px;
     background: #f5f6fa;
   }
+  #setup-screen > label,
+  #setup-screen > select,
+  #setup-screen > input,
+  #setup-screen > button {
+    display: block;
+    margin-bottom: 12px;
+  }
 
-  /* Hangman ASCII drawing area */
-  #hangman-display {
-    font-family: monospace, monospace;
-    background: #f0f0f0;
-    padding: 18px 24px;
-    border-radius: 12px;
-    margin: 30px auto;
-    max-width: 300px;
-    white-space: pre;
-    box-shadow: inset 0 0 8px rgb(0 0 0 / 0.1);
-    color: #333;
-    font-size: 1.4rem;
-    line-height: 1.1em;
+  /* Hangman image display */
+  #hangman-img {
+    max-width: 320px;
+    margin: 30px auto 10px;
+    display: block;
+    user-select: none;
   }
 
   #word-display {
@@ -107,16 +107,17 @@
     letter-spacing: 18px;
     font-weight: 700;
     color: #45337f;
-    margin: 30px 0 15px;
+    margin: 20px 0 10px;
     user-select: none;
     text-transform: uppercase;
+    text-align: center;
   }
 
   #virtual-keyboard {
     display: flex;
     flex-wrap: wrap;
     justify-content: center;
-    max-width: 620px;
+    max-width: 700px;
     margin: 15px auto 25px;
     gap: 10px;
   }
@@ -199,133 +200,84 @@
       height: 44px;
       font-size: 1.1rem;
     }
+    #hangman-img {
+      max-width: 240px;
+    }
   }
 </style>
 </head>
 <body>
-  <div class="container">
-    <h1>Jeu du Pendu Multi-Joueurs</h1>
+<div class="container">
+  <h1>Jeu du Pendu Multi-Joueurs</h1>
 
-    <section id="setup-screen">
-      <label for="player-count">Nombre de joueurs :</label>
-      <input type="number" id="player-count" min="2" max="6" value="2" />
+  <section id="setup-screen">
+    <label for="player-count">Nombre de joueurs :</label>
+    <input type="number" id="player-count" min="2" max="6" value="2" />
 
-      <label for="starting-player">Joueur qui commence à faire deviner (1 - N) :</label>
-      <input type="number" id="starting-player" min="1" max="6" value="1" />
+    <label for="starting-player">Joueur qui commence à faire deviner (1 - N) :</label>
+    <input type="number" id="starting-player" min="1" max="6" value="1" />
 
-      <label for="rounds-number">Nombre de manches (un passage par joueur) :</label>
-      <input type="number" id="rounds-number" min="1" max="20" value="3" />
+    <label for="rounds-number">Nombre de manches (un passage par joueur) :</label>
+    <input type="number" id="rounds-number" min="1" max="20" value="3" />
 
-      <button id="start-button">Démarrer la partie</button>
-    </section>
+    <label for="keyboard-layout">Disposition clavier :</label>
+    <select id="keyboard-layout">
+      <option value="azerty">AZERTY</option>
+      <option value="qwerty">QWERTY</option>
+      <option value="alpha">Alphabétique</option>
+    </select>
 
-    <section id="game-screen" style="display:none;">
-      <div id="info-bar" style="text-align:center; margin-bottom: 10px;">
-        <strong>Manche <span id="current-round">1</span> / <span id="total-rounds"></span></strong> - 
-        <strong>Tour du joueur <span id="current-guessing-player">1</span></strong>
-      </div>
-      
-      <div id="hangman-display"></div>
-      <div id="word-display"></div>
-      <div id="virtual-keyboard"></div>
-      <div id="message"></div>
-      <button id="restart">Recommencer</button>
+    <button id="start-button">Démarrer la partie</button>
+  </section>
 
-      <h2 style="text-align:center; margin-top: 40px;">Classement des joueurs</h2>
-      <table id="scoreboard">
-        <thead>
-          <tr><th>Joueur</th><th>Points</th></tr>
-        </thead>
-        <tbody></tbody>
-      </table>
-    </section>
-  </div>
+  <section id="game-screen" style="display:none;">
+    <div id="info-bar" style="text-align:center; margin-bottom: 10px;">
+      <strong>Manche <span id="current-round">1</span> / <span id="total-rounds"></span></strong> - 
+      <strong>Tour du joueur <span id="current-guessing-player">1</span></strong>
+    </div>
+
+    <img id="hangman-img" src="" alt="Image du pendu" />
+
+    <div id="word-display"></div>
+    <div id="virtual-keyboard"></div>
+    <div id="message"></div>
+    <button id="restart">Recommencer</button>
+
+    <h2 style="text-align:center; margin-top: 40px;">Classement des joueurs</h2>
+    <table id="scoreboard">
+      <thead>
+        <tr><th>Joueur</th><th>Points</th></tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </section>
+</div>
 
 <script>
-  const hangmanStates = [
-`__________
-|/       |
-|
-|
-|
-|
-|_______`,
-`__________
-|/       |
-|       ( )
-|
-|
-|
-|_______`,
-`__________
-|/       |
-|       ( )
-|        |
-|
-|
-|_______`,
-`__________
-|/       |
-|       ( )
-|       \\|
-|
-|
-|_______`,
-`__________
-|/       |
-|       ( )
-|       \\|/
-|
-|
-|_______`,
-`__________
-|/       |
-|       ( )
-|       \\|/
-|        |
-|
-|_______`,
-`__________
-|/       |
-|       ( )
-|       \\|/
-|        |
-|       /
-|_______`,
-`__________
-|/       |
-|       ( )
-|       \\|/
-|        |
-|       / \\
-|_______`,
-`__________
-|/       |
-|       (x_x)
-|       \\|/
-|        |
-|       / \\
-|_______`,
-`__________
-|/       |
-|       (x_x)
-|      --|--
-|        |
-|       / \\
-|_______`
-  ];
+  // Images à inclure dans dossier 'assets', nommées "hangman0.png" à "hangman9.png"
+  const maxWrong = 9;
+  const hangmanImagePaths = [];
+  for (let i = 0; i <= maxWrong; i++) {
+    hangmanImagePaths.push(`assets/hangman${i}.png`);
+  }
 
-  const maxWrong = hangmanStates.length - 1;
+  // Claviers
+  const keyboards = {
+    azerty: ['A','Z','E','R','T','Y','U','I','O','P','Q','S','D','F','G','H','J','K','L','M','W','X','C','V','B','N'],
+    qwerty: ['Q','W','E','R','T','Y','U','I','O','P','A','S','D','F','G','H','J','K','L','Z','X','C','V','B','N','M'],
+    alpha: 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('')
+  };
 
-  // Setup DOM Elements
+  // Sélecteurs DOM
   const setupScreen = document.getElementById('setup-screen');
   const gameScreen = document.getElementById('game-screen');
   const startButton = document.getElementById('start-button');
   const playerCountInput = document.getElementById('player-count');
   const startingPlayerInput = document.getElementById('starting-player');
   const roundsNumberInput = document.getElementById('rounds-number');
+  const keyboardLayoutSelect = document.getElementById('keyboard-layout');
 
-  const hangmanDisplay = document.getElementById('hangman-display');
+  const hangmanImg = document.getElementById('hangman-img');
   const wordDisplay = document.getElementById('word-display');
   const keyboardDiv = document.getElementById('virtual-keyboard');
   const messageDiv = document.getElementById('message');
@@ -337,32 +289,34 @@
 
   const scoreboardTableBody = document.querySelector('#scoreboard tbody');
 
-  // Game State Variables
+  // Variables de jeu
   let numPlayers, currentRound, totalRounds;
-  let players = [];
   let scores = [];
-  let wordSetterIndex;  // Player index who sets the word
-  let wordGuesserIndex; // Player index who guesses
+  let wordSetterIndex;
+  let wordGuesserIndex;
   let secretWord;
   let wordArray = [];
   let guessedWord = [];
   let wrongGuesses;
   let gameActive = false;
+  let currentKeyboard = keyboards.azerty;
 
+  // Création clavier virtuel selon layout
   function createKeyboard() {
     keyboardDiv.innerHTML = '';
-    for(let i = 65; i <= 90; i++) {
-      const letter = String.fromCharCode(i);
+    currentKeyboard.forEach(letter => {
       const btn = document.createElement('button');
       btn.textContent = letter;
       btn.className = 'key';
       btn.addEventListener('click', () => handleGuess(letter, btn));
       keyboardDiv.appendChild(btn);
-    }
+    });
   }
 
+  // Mise à jour affichages
   function updateDisplay() {
-    hangmanDisplay.textContent = hangmanStates[wrongGuesses];
+    hangmanImg.src = hangmanImagePaths[wrongGuesses];
+    hangmanImg.alt = `Image du pendu erreur ${wrongGuesses} sur ${maxWrong}`;
     wordDisplay.textContent = guessedWord.join(' ');
     currentRoundSpan.textContent = currentRound;
     totalRoundsSpan.textContent = totalRounds;
@@ -370,27 +324,31 @@
     updateScoreboard();
   }
 
+  // Désactive toutes les touches
   function disableAllKeys() {
     document.querySelectorAll('button.key').forEach(btn => btn.disabled = true);
   }
 
+  // Révèle le mot complet
   function revealWord() {
     guessedWord = wordArray.slice();
     updateDisplay();
   }
 
+  // Gestion des clics sur lettres
   function handleGuess(letter, button) {
     if (!gameActive) return;
     button.disabled = true;
+    letter = letter.toUpperCase();
 
     if (wordArray.includes(letter)) {
-      wordArray.forEach((char, index) => {
-        if (char === letter) guessedWord[index] = letter;
+      wordArray.forEach((char, idx) => {
+        if (char === letter) guessedWord[idx] = letter;
       });
       updateDisplay();
 
       if (!guessedWord.includes('_')) {
-        messageDiv.textContent = `🎉 Joueur ${wordGuesserIndex + 1} a deviné le mot !`;
+        messageDiv.textContent = `🎉 Joueur ${wordGuesserIndex + 1} a deviné le mot ! +1 point`;
         messageDiv.className = 'win';
         scores[wordGuesserIndex]++;
         endTurn(true);
@@ -409,23 +367,22 @@
     }
   }
 
+  // Mise à jour du tableau des scores
   function updateScoreboard() {
     scoreboardTableBody.innerHTML = '';
-    players.forEach((p, i) => {
+    for (let i=0; i < numPlayers; i++) {
       const tr = document.createElement('tr');
       tr.innerHTML = `<td>Joueur ${i+1}</td><td>${scores[i]}</td>`;
       scoreboardTableBody.appendChild(tr);
-    });
+    }
   }
 
+  // Fin de la manche et passage à la suivante
   function endTurn(won) {
     gameActive = false;
     disableAllKeys();
     restartBtn.style.display = 'inline-block';
 
-    // Changement des rôles pour la prochaine manche
-    // Si devine -> devineur devient poseur
-    // Sinon poseur reste poseur, devineur passe au joueur suivant (modulo)
     if (won) {
       wordSetterIndex = wordGuesserIndex;
       wordGuesserIndex = (wordGuesserIndex + 1) % numPlayers;
@@ -433,16 +390,15 @@
       wordGuesserIndex = (wordGuesserIndex + 1) % numPlayers;
     }
 
-    // Passage à la manche suivante si on a fini le nombre de manches
     if (currentRound >= totalRounds * numPlayers) {
-      messageDiv.textContent += ' 🏆 Partie terminée ! Regardez le classement ci-dessous.';
+      messageDiv.textContent += ' 🏆 Partie terminée ! Consultez le classement.';
       restartBtn.textContent = 'Nouvelle partie';
       restartBtn.onclick = () => location.reload();
       return;
     }
   }
 
-  // Demander le mot à faire deviner au joueur setter
+  // Demande mot au setter
   async function promptForWord() {
     let promptText = `Joueur ${wordSetterIndex+1}, entrez un mot secret (A-Z uniquement) :`;
     let word;
@@ -453,35 +409,33 @@
     return word;
   }
 
+  // Démarre un tour
   async function startTurn() {
     messageDiv.textContent = '';
     restartBtn.style.display = 'none';
     wrongGuesses = 0;
-    hangmanDisplay.textContent = hangmanStates[0];
-
-    // Le setter entre un mot
     secretWord = await promptForWord();
+
     if (!secretWord) {
       messageDiv.textContent = 'Partie interrompue.';
       gameActive = false;
       return;
     }
-
     wordArray = secretWord.split('');
     guessedWord = Array(wordArray.length).fill('_');
-    
-    createKeyboard();
-    updateDisplay();
 
-    gameActive = true;
+    createKeyboard();
     currentRound++;
-    currentRoundSpan.textContent = currentRound;
+    updateDisplay();
+    gameActive = true;
   }
 
+  // Bouton démarrer
   startButton.addEventListener('click', async () => {
     numPlayers = parseInt(playerCountInput.value);
     let starter = parseInt(startingPlayerInput.value) - 1;
     totalRounds = parseInt(roundsNumberInput.value);
+    const layout = keyboardLayoutSelect.value;
 
     if (isNaN(numPlayers) || numPlayers < 2 || numPlayers > 6) {
       alert('Le nombre de joueurs doit être entre 2 et 6.');
@@ -496,7 +450,7 @@
       return;
     }
 
-    players = Array(numPlayers).fill(null);
+    currentKeyboard = keyboards[layout] || keyboards.azerty;
     scores = Array(numPlayers).fill(0);
     wordSetterIndex = starter;
     wordGuesserIndex = (starter + 1) % numPlayers;
@@ -508,6 +462,7 @@
     await startTurn();
   });
 
+  // Bouton recommencer manche
   restartBtn.addEventListener('click', async () => {
     if (currentRound < totalRounds * numPlayers) {
       await startTurn();
@@ -515,6 +470,8 @@
       restartBtn.style.display = 'none';
     }
   });
+
 </script>
+
 </body>
 </html>
